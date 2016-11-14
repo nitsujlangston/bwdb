@@ -33,6 +33,7 @@
     "async": "^2.0.0",
     "bitcoind-rpc": "^0.7.0",
     "bitcore-lib": "^0.13.19",
+    "bitcore-message": "^1.0.2",
     "bitcore-node": "bitpay/bitcore-node#6a1e5770cf69380b205ee4560e3058951153f700",
     "bloom-filter": "braydonf/bloom-filter#28a473273e276d3293f465308d6b7442167cbf0f",
     "body-parser": "^1.15.2",
