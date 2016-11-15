@@ -51,7 +51,7 @@ unlockMasterKey(function(err, secret) {
   var outStream = fs.createWriteStream(outFile);
   outStream.write('[\n');
 
-  async.mapLimit(keyEntries, concurrency, function(record, next) {
+  async.eachLimit(keyEntries, concurrency, function(record, next) {
     if (record.type === 'encrypted private key') {
       count++;
       if(count % 1000 === 0) {
@@ -92,12 +92,12 @@ unlockMasterKey(function(err, secret) {
           outStream.write('\n');
         }
 
-        next(null, obj);
+        next();
       });
     } else {
       setImmediate(next);
     }
-  }, function(err, results) {
+  }, function(err) {
     if(err) {
       throw(err);
     }
