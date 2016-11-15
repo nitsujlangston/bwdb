@@ -95,7 +95,7 @@ unlockMasterKey(function(err, secret) {
         next(null, obj);
       });
     } else {
-      next(null);
+      setImmediate(next);
     }
   }, function(err, results) {
     if(err) {
@@ -231,7 +231,10 @@ function decrypt(opts, callback) {
   } catch(e) {
     return callback(e);
   }
-  callback(null, plainText);
+
+  setImmediate(function() {
+    callback(null, plainText);
+  });
 };
 
 function getMasterKey(json) {
