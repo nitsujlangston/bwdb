@@ -10,7 +10,8 @@ var program = require('commander');
 
 program
   .description('Sign a message with all private keys')
-  .usage('<json-file> <message-file> <output-file>')
+  .usage('[options] <json-file> <message-file> <output-file>')
+  .option('-s, --skip [n]', 'Skip first n private keys')
   .parse(process.argv);
 
 if(program.args.length !== 3) {
@@ -47,6 +48,10 @@ unlockMasterKey(function(err, secret) {
 
   console.log('Processing ' + total + ' private keys');
 
+  if(program.skip) {
+    console.log('Skipping first ' + program.skip + ' keys');
+  }
+
   var count = 0;
   var outStream = fs.createWriteStream(outFile);
   outStream.write('[\n');
@@ -54,6 +59,11 @@ unlockMasterKey(function(err, secret) {
   async.eachLimit(keyEntries, concurrency, function(record, next) {
     if (record.type === 'encrypted private key') {
       count++;
+
+      if(program.skip && count <= program.skip) {
+        return setImmediate(next);
+      }
+
       if(count % 1000 === 0) {
         console.log((new Date()).toISOString() + ': ' + count);
       }
@@ -77,7 +87,7 @@ unlockMasterKey(function(err, secret) {
         var pubKey = privateKey.toPublicKey();
 
         if (record.pubKey !== pubKey.toString('hex')) {
-          return callback(new Error('public key: ' + record.pubKey + ' in json export did not match: ' + pubKey));
+          console.log('WARNING: '+ 'public key: ' + record.pubKey + ' in json export did not match: ' + pubKey);
         }
 
         var obj = {
