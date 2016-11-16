@@ -60,12 +60,14 @@ unlockMasterKey(function(err, secret) {
     if (record.type === 'encrypted private key') {
       count++;
 
-      if(program.skip && count <= program.skip) {
+      var closureCount = count;
+
+      if(program.skip && closureCount <= program.skip) {
         return setImmediate(next);
       }
 
-      if(count % 1000 === 0) {
-        console.log((new Date()).toISOString() + ': ' + count);
+      if(closureCount % 1000 === 0) {
+        console.log((new Date()).toISOString() + ': ' + closureCount);
       }
 
       decrypt({
@@ -76,19 +78,29 @@ unlockMasterKey(function(err, secret) {
         if(err) {
           return callback(err);
         }
+
+        var recordPubkey;
+        try {
+          recordPubkey = new bitcore.PublicKey(record.pubKey);
+        } catch(e) {
+          console.log('ERROR: invalid public key in json export: ' + record.pubKey);
+          return next();
+        }
+
         var privateKey = bitcore.PrivateKey.fromObject({
           bn: privKey,
-          compressed: true,
+          compressed: recordPubkey.compressed,
           network: livenet
         });
 
-        var signature = Message(message).sign(privateKey);
-
         var pubKey = privateKey.toPublicKey();
 
-        if (record.pubKey !== pubKey.toString('hex')) {
-          console.log('WARNING: '+ 'public key: ' + record.pubKey + ' in json export did not match: ' + pubKey);
+        if (recordPubkey.toString('hex') !== pubKey.toString('hex')) {
+          console.log('ERROR: '+ 'public key: ' + record.pubKey + ' in json export did not match: ' + pubKey);
+          return next();
         }
+
+        var signature = Message(message).sign(privateKey);
 
         var obj = {
           address: pubKey.toAddress().toString(),
@@ -96,7 +108,7 @@ unlockMasterKey(function(err, secret) {
         };
 
         outStream.write(JSON.stringify(obj, null, 2));
-        if(count < total) {
+        if(closureCount < total) {
           outStream.write(',\n');
         } else {
           outStream.write('\n');
