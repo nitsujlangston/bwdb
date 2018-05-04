@@ -17,7 +17,6 @@ program
   .description('Sign a message with all private keys')
   .usage('[options] <jsonl-file> <message-file> <output-file>')
   .option('-s, --skip [n]', 'Skip first n private keys')
-  .option('-n, --network [network]', 'livenet/testnet/regtest')
   .parse(process.argv);
 
 if (program.args.length !== 3) {
@@ -32,12 +31,6 @@ const jsonlFile = program.args[0];
 const messageFile = program.args[1];
 const message = fs.readFileSync(messageFile, 'utf8');
 const outFile = program.args[2];
-let network = program.network || 'livenet';
-const { Networks } = bitcore;
-if (network === 'regtest') {
-  Networks.enableRegtest();
-  network = 'testnet';
-}
 const derivationMethods = { SHA512: 0 };
 
 const outStream = fs.createWriteStream(outFile);
