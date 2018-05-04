@@ -5,12 +5,13 @@
 const crypto = require('crypto');
 const scrypt = require('scrypt');
 const bitcore = require('bitcore-lib');
-const Message = require('bitcore-message');
 const ttyread = require('ttyread');
 const  _  = require('lodash');
 const fs = require('fs');
 const readline = require('readline');
 const program = require('commander');
+const secp256k1 = require('secp256k1');
+const sha256sha256 = bitcore.crypto.Hash.sha256sha256;
 
 program
   .description('Sign a message with all private keys')
@@ -91,35 +92,23 @@ lineReader.on('line', (line) => {
     iv: bitcore.crypto.Hash.sha256sha256(Buffer.from(line.pubKey, 'hex')),
     cipherText: line.cipherText
   });
-  let recordPubkey;
-  try {
-    recordPubkey = new bitcore.PublicKey(line.pubKey);
-  } catch (e) {
-    console.log('ERROR: invalid public key in json export: ' + line.pubKey);
-    throw e;
-  }
 
-  var privateKey = bitcore.PrivateKey.fromObject({
-    bn: privKey,
-    compressed: recordPubkey.compressed,
-    network: Networks[network]
-  });
+  const MAGIC_BYTES = Buffer.from('Bitcoin Signed Message:\n');
+  const prefix1 = bitcore.encoding.BufferWriter.varintBufNum(MAGIC_BYTES.length);
+  const messageBuffer = Buffer.from(message);
+  const prefix2 = bitcore.encoding.BufferWriter.varintBufNum(messageBuffer.length);
+  const buf = Buffer.concat([prefix1, MAGIC_BYTES, prefix2, messageBuffer]);
+  const hash = sha256sha256(buf);
 
-  var pubKey = privateKey.toPublicKey();
+  let signature = secp256k1.sign(hash, Buffer.from(privKey, 'hex'));
+  signature = Buffer.concat([new Buffer([31 + signature.recovery]), signature.signature]);
 
-  if (recordPubkey.toString('hex') !== pubKey.toString('hex')) {
-    console.error('ERROR: ' + 'public key: ' + line.pubKey + ' in json export did not match: ' + pubKey);
-    throw new Error('keys did not match as expected');
-  }
-
-  var signature = Message(message).sign(privateKey);
-
-  var obj = {
-    address: pubKey.toAddress(network).toString(),
-    signature: signature
+  const result = {
+    address: line.address,
+    signature: signature.toString('base64')
   };
 
-  outStream.write(JSON.stringify(obj) + '\n');
+  outStream.write(JSON.stringify(result) + '\n');
   lineReader.resume();
 });
 
